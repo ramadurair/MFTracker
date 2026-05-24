@@ -217,11 +217,11 @@
     <div class="sheet-title">Import Portfolio CSV</div>
     <div class="sheet-desc">Select your CSV file from phone storage. It will be read locally — nothing is uploaded anywhere.</div>
 
-    <div class="file-input-wrap" onclick="document.getElementById('csvInput').click()">
-      <input type="file" id="csvInput" accept=".csv,text/csv" onchange="handleFileSelect(event)">
+    <div class="file-input-wrap" onclick="openFilePicker()">
+      <input type="file" id="csvInput" accept=".csv,text/csv,text/plain,*/*" onchange="handleFileSelect(event)" style="display:none">
       <div class="file-input-icon">📄</div>
       <div class="file-input-label">Tap to select CSV file</div>
-      <div class="file-input-hint">From Downloads, Drive, or any storage</div>
+      <div class="file-input-hint">From Downloads, Drive, Files, or any storage</div>
     </div>
 
     <div class="csv-format">
@@ -584,6 +584,26 @@ function updateLastRefresh() {
   if (!lastRefreshTime) { el.textContent = ''; return; }
   el.textContent = 'Last updated: ' + lastRefreshTime.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
 }
+
+// ── FILE PICKER ────────────────────────────────────────────────────
+function openFilePicker() {
+  // Trigger the hidden input — WebChromeClient.onShowFileChooser fires on Android
+  document.getElementById('csvInput').click();
+}
+
+// Called directly from Android MainActivity with raw CSV text
+window.receiveCSVContent = function(csvText) {
+  closeUpload();
+  try {
+    holdings = parseCSV(csvText);
+    saveHoldings();
+    showStatus('✓ Loaded ' + holdings.length + ' fund(s)', 'success');
+    renderCards();
+    refreshAll();
+  } catch(err) {
+    showStatus('CSV Error: ' + err.message, 'error');
+  }
+};
 
 // ── INIT ───────────────────────────────────────────────────────────
 function init() {
