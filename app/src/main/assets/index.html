@@ -155,6 +155,19 @@
   }
   .csv-format strong { color: var(--text); }
 
+  /* ── HIGH TOGGLE ── */
+  .toggle-row { display: flex; align-items: center; gap: 8px; padding: 0 16px 4px; }
+  .toggle-label { font-size: 12px; color: var(--sub); }
+  .toggle-pill {
+    display: flex; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px; gap: 2px;
+  }
+  .toggle-opt {
+    padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;
+    cursor: pointer; color: var(--sub); transition: all 0.2s; border: none; background: none;
+  }
+  .toggle-opt.active { background: var(--accent); color: #fff; }
+
   /* ── LAST UPDATE ── */
   .last-refresh { font-size: 11px; color: var(--sub); text-align: center; padding: 8px 16px 0; }
 
@@ -199,6 +212,13 @@
 <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 <div class="status-bar" id="statusBar"></div>
 <div class="last-refresh" id="lastRefresh"></div>
+<div class="toggle-row" id="toggleRow" style="display:none">
+  <span class="toggle-label">High basis:</span>
+  <div class="toggle-pill">
+    <button class="toggle-opt active" id="tog52w" onclick="setHighMode('52w')">52-Week</button>
+    <button class="toggle-opt" id="togATH" onclick="setHighMode('ath')">All-Time</button>
+  </div>
+</div>
 
 <div id="mainContent">
   <div class="empty-state" id="emptyState">
@@ -239,7 +259,8 @@
 <script>
 // ── STATE ──────────────────────────────────────────────────────────
 let holdings = [];   // parsed from CSV
-let navData = {};    // { schemeCode: { latestNAV, latestDate, high52w, high52wDate } }
+let navData = {};    // { schemeCode: { latestNAV, latestDate, high52w, high52wDate, highATH, highATHDate } }
+let highMode = '52w';  // '52w' or 'ath'
 let lastRefreshTime = null;
 let expandedCards = new Set();
 
@@ -344,14 +365,17 @@ async function fetchSchemeData(schemeCode) {
   cutoff.setDate(cutoff.getDate() - 365);
 
   let high52w = 0, high52wDate = '';
+  let highATH = 0, highATHDate = '';
   for (const entry of navHistory) {
     const d = parseMFDate(entry.date);
-    if (d < cutoff) break;  // data is newest-first, so once we pass 365 days we stop
     const nav = parseFloat(entry.nav);
-    if (nav > high52w) { high52w = nav; high52wDate = entry.date; }
+    // All-time high — scan everything
+    if (nav > highATH) { highATH = nav; highATHDate = entry.date; }
+    // 52-week high — stop once older than 365 days
+    if (d >= cutoff && nav > high52w) { high52w = nav; high52wDate = entry.date; }
   }
 
-  return { latestNAV, latestDate, high52w, high52wDate, schemeName };
+  return { latestNAV, latestDate, high52w, high52wDate, highATH, highATHDate, schemeName };
 }
 
 function parseMFDate(dateStr) {
@@ -402,6 +426,7 @@ async function refreshAll() {
   lastRefreshTime = new Date();
   updateLastRefresh();
 
+  document.getElementById('toggleRow').style.display = 'flex';
   if (errors === 0) {
     hideStatus();
   } else {
@@ -448,10 +473,15 @@ function renderCardContent(card, h) {
   } else {
     const currentValue = h.qty * d.latestNAV;
     const gainVsCost   = currentValue - h.costPrice;
-    const gainVs52w    = currentValue - (h.qty * d.high52w);
     const gainClass    = v => v >= 0 ? 'green' : 'red';
     const fmt          = v => '₹' + Math.abs(v).toLocaleString('en-IN', {maximumFractionDigits: 2});
     const sign         = v => v >= 0 ? '+' : '-';
+
+    const highNAV      = highMode === 'ath' ? d.highATH  : d.high52w;
+    const highDate     = highMode === 'ath' ? d.highATHDate : d.high52wDate;
+    const highLabel    = highMode === 'ath' ? 'All-Time High' : '52-Week High';
+    const highShort    = highMode === 'ath' ? 'ATH' : '52W';
+    const gainVsHigh   = currentValue - (h.qty * highNAV);
 
     bodyHTML = `
     <div class="fund-body">
@@ -478,23 +508,23 @@ function renderCardContent(card, h) {
         </div>
       </div>
 
-      <div class="divider-row">52-Week High</div>
+      <div class="divider-row">${highLabel}</div>
 
       <div class="metrics-grid">
         <div class="metric">
-          <div class="metric-label">52W High NAV</div>
-          <div class="metric-value yellow">₹${d.high52w.toLocaleString('en-IN', {maximumFractionDigits: 4})}</div>
-          <div class="metric-sub">${d.high52wDate}</div>
+          <div class="metric-label">${highShort} High NAV</div>
+          <div class="metric-value yellow">₹${highNAV.toLocaleString('en-IN', {maximumFractionDigits: 4})}</div>
+          <div class="metric-sub">${highDate}</div>
         </div>
         <div class="metric">
-          <div class="metric-label">Value @ 52W High</div>
-          <div class="metric-value yellow">₹${(h.qty * d.high52w).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+          <div class="metric-label">Value @ ${highShort} High</div>
+          <div class="metric-value yellow">₹${(h.qty * highNAV).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
           <div class="metric-sub">${h.qty.toFixed(3)} units</div>
         </div>
         <div class="metric full-width">
-          <div class="metric-label">Gain / Loss vs 52W High</div>
-          <div class="metric-value ${gainClass(gainVs52w)}">${sign(gainVs52w)}${fmt(Math.abs(gainVs52w))}</div>
-          <div class="metric-sub">Current value vs peak value in last 52 weeks</div>
+          <div class="metric-label">Gain / Loss vs ${highLabel}</div>
+          <div class="metric-value ${gainClass(gainVsHigh)}">${sign(gainVsHigh)}${fmt(Math.abs(gainVsHigh))}</div>
+          <div class="metric-sub">Current value vs ${highLabel.toLowerCase()} NAV value</div>
         </div>
       </div>
     </div>`;
@@ -570,6 +600,14 @@ function showStatus(msg, type) {
 }
 function hideStatus() { document.getElementById('statusBar').className = 'status-bar'; }
 
+function setHighMode(mode) {
+  highMode = mode;
+  document.getElementById('tog52w').className = 'toggle-opt' + (mode === '52w' ? ' active' : '');
+  document.getElementById('togATH').className  = 'toggle-opt' + (mode === 'ath' ? ' active' : '');
+  // Re-render all expanded cards
+  holdings.forEach(h => updateCard(h.schemeCode));
+}
+
 function showProgress(pct) {
   document.getElementById('progressBar').classList.add('visible');
   document.getElementById('progressFill').style.width = pct + '%';
@@ -610,6 +648,7 @@ function init() {
   loadHoldings();
   if (holdings.length > 0) {
     renderCards();
+    document.getElementById('toggleRow').style.display = 'flex';
     // Auto-expand first card
     if (holdings[0]) expandedCards.add(holdings[0].schemeCode);
     refreshAll();
