@@ -56,6 +56,7 @@
   .summary-value { font-size: 15px; font-weight: 700; }
   .summary-value.green { color: var(--green); }
   .summary-value.red { color: var(--red); }
+  .summary-value.yellow { color: var(--yellow); }
 
   /* ── STATUS ── */
   .status-bar {
@@ -205,6 +206,16 @@
     <div class="summary-card">
       <div class="summary-label">Gain/Loss</div>
       <div class="summary-value" id="sumGain">—</div>
+    </div>
+    <div class="summary-card" id="sumHighCard" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="summary-label" id="sumHighLabel">52W High Value</div>
+        <div class="summary-value yellow" id="sumHigh">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="summary-label" id="sumHighGainLabel">vs High</div>
+        <div class="summary-value" id="sumHighGain">—</div>
+      </div>
     </div>
   </div>
 </div>
@@ -556,24 +567,37 @@ function toggleCard(schemeCode) {
 
 // ── SUMMARY ────────────────────────────────────────────────────────
 function updateSummary() {
-  let totalCost = 0, totalCurrent = 0, hasData = false;
+  let totalCost = 0, totalCurrent = 0, totalHigh = 0, hasData = false;
   for (const h of holdings) {
     const d = navData[h.schemeCode];
     if (!d || d.error) continue;
+    const highNAV = highMode === 'ath' ? d.highATH : d.high52w;
     totalCost    += h.costPrice;
     totalCurrent += h.qty * d.latestNAV;
+    totalHigh    += h.qty * (highNAV || 0);
     hasData = true;
   }
   if (!hasData) return;
 
-  const gain = totalCurrent - totalCost;
-  const fmt  = v => '₹' + v.toLocaleString('en-IN', {maximumFractionDigits: 0});
+  const gain     = totalCurrent - totalCost;
+  const gainHigh = totalCurrent - totalHigh;
+  const fmt      = v => '₹' + v.toLocaleString('en-IN', {maximumFractionDigits: 0});
 
   document.getElementById('sumInvested').textContent = fmt(totalCost);
   document.getElementById('sumCurrent').textContent  = fmt(totalCurrent);
+
   const gainEl = document.getElementById('sumGain');
-  gainEl.textContent  = (gain >= 0 ? '+' : '-') + fmt(Math.abs(gain));
-  gainEl.className    = 'summary-value ' + (gain >= 0 ? 'green' : 'red');
+  gainEl.textContent = (gain >= 0 ? '+' : '-') + fmt(Math.abs(gain));
+  gainEl.className   = 'summary-value ' + (gain >= 0 ? 'green' : 'red');
+
+  document.getElementById('sumHighLabel').textContent     = (highMode === 'ath' ? 'All-Time' : '52W') + ' High Value';
+  document.getElementById('sumHighGainLabel').textContent = 'vs ' + (highMode === 'ath' ? 'ATH' : '52W High');
+  document.getElementById('sumHigh').textContent          = fmt(totalHigh);
+
+  const highGainEl = document.getElementById('sumHighGain');
+  highGainEl.textContent = (gainHigh >= 0 ? '+' : '-') + fmt(Math.abs(gainHigh));
+  highGainEl.className   = 'summary-value ' + (gainHigh >= 0 ? 'green' : 'red');
+
   document.getElementById('summary').style.display = 'grid';
 }
 
@@ -604,8 +628,9 @@ function setHighMode(mode) {
   highMode = mode;
   document.getElementById('tog52w').className = 'toggle-opt' + (mode === '52w' ? ' active' : '');
   document.getElementById('togATH').className  = 'toggle-opt' + (mode === 'ath' ? ' active' : '');
-  // Re-render all expanded cards
+  // Re-render all expanded cards and update summary
   holdings.forEach(h => updateCard(h.schemeCode));
+  updateSummary();
 }
 
 function showProgress(pct) {
