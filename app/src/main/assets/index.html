@@ -432,6 +432,11 @@ async function refreshAll() {
     updateSummary();
   }
 
+  // Sort alphabetically by scheme name now that all names are loaded
+  holdings.sort((a, b) => (a.schemeName || a.schemeCode).localeCompare(b.schemeName || b.schemeCode));
+  saveHoldings();
+  renderCards();
+
   btn.classList.remove('spinning');
   hideProgress();
   lastRefreshTime = new Date();
@@ -453,9 +458,6 @@ function renderCards() {
   document.getElementById('emptyState').style.display = holdings.length ? 'none' : 'block';
   document.getElementById('sectionTitle').style.display = holdings.length ? 'block' : 'none';
   document.getElementById('summary').style.display = holdings.length ? 'grid' : 'none';
-
-  // Sort alphabetically by scheme name (falls back to scheme code)
-  holdings.sort((a, b) => (a.schemeName || a.schemeCode).localeCompare(b.schemeName || b.schemeCode));
 
   holdings.forEach(h => {
     const card = document.createElement('div');

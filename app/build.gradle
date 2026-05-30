@@ -12,7 +12,13 @@ android {
         versionName "1.0"
     }
     buildTypes {
-        release { minifyEnabled false }
+        release {
+            minifyEnabled false
+            // Signing is done in CI via apksigner
+        }
+        debug {
+            applicationIdSuffix ""
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
