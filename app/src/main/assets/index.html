@@ -454,6 +454,9 @@ function renderCards() {
   document.getElementById('sectionTitle').style.display = holdings.length ? 'block' : 'none';
   document.getElementById('summary').style.display = holdings.length ? 'grid' : 'none';
 
+  // Sort alphabetically by scheme name (falls back to scheme code)
+  holdings.sort((a, b) => (a.schemeName || a.schemeCode).localeCompare(b.schemeName || b.schemeCode));
+
   holdings.forEach(h => {
     const card = document.createElement('div');
     card.className = 'fund-card';
@@ -673,14 +676,4 @@ function init() {
   loadHoldings();
   if (holdings.length > 0) {
     renderCards();
-    document.getElementById('toggleRow').style.display = 'flex';
-    // Auto-expand first card
-    if (holdings[0]) expandedCards.add(holdings[0].schemeCode);
-    refreshAll();
-  }
-}
-
-init();
-</script>
-</body>
-</html>
+    document.getElementById('toggleRow').style
