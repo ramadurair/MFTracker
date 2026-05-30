@@ -676,4 +676,14 @@ function init() {
   loadHoldings();
   if (holdings.length > 0) {
     renderCards();
-    document.getElementById('toggleRow').style
+    document.getElementById('toggleRow').style.display = 'flex';
+    // Auto-expand first card
+    if (holdings[0]) expandedCards.add(holdings[0].schemeCode);
+    refreshAll();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
