@@ -28,19 +28,9 @@ jobs:
 
       - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
-
       - name: Sign APK with consistent key
         run: |
-          keytool -genkeypair \
-            -alias mftracker \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -keystore /tmp/release.jks \
-            -storepass mftracker123 \
-            -keypass mftracker123 \
-            -dname "CN=MFTracker, OU=App, O=MFTracker, L=Chennai, S=TN, C=IN" \
-            -storetype PKCS12
+          echo "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" | base64 -d > /tmp/release.jks
           $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
             app/build/outputs/apk/release/app-release-aligned.apk
@@ -51,7 +41,7 @@ jobs:
             --ks-key-alias mftracker \
             --out app/build/outputs/apk/release/MFTracker-signed.apk \
             app/build/outputs/apk/release/app-release-aligned.apk
-
+      
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
