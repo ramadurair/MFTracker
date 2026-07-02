@@ -40,30 +40,34 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    // Create a separate WebView just for printing
-                    // Use a FrameLayout container so it doesn't replace main content
-                    final WebView printView = new WebView(MainActivity.this);
-                    printView.getSettings().setJavaScriptEnabled(true);
-                    printView.setWebViewClient(new WebViewClient() {
-                        @Override
-                        public void onPageFinished(WebView view, String url) {
-                            PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
-                            if (pm != null) {
-                                PrintDocumentAdapter adapter =
-                                    view.createPrintDocumentAdapter("MFTracker Portfolio");
-                                PrintAttributes attrs = new PrintAttributes.Builder()
-                                    .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
-                                    .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-                                    .build();
-                                pm.print("MFTracker Portfolio", adapter, attrs);
-                            }
-                            // Clean up the print WebView after initiating print
-                            view.destroy();
+                    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(MainActivity.this);
+                    builder.setTitle("MFTracker PDF");
+                    builder.setMessage("Opening print dialog...");
+                    builder.setPositiveButton("OK", new android.content.DialogInterface.OnClickListener() {
+                        public void onClick(android.content.DialogInterface dialog, int which) {
+                            final WebView printView = new WebView(MainActivity.this);
+                            printView.getSettings().setJavaScriptEnabled(true);
+                            printView.setWebViewClient(new WebViewClient() {
+                                @Override
+                                public void onPageFinished(WebView view, String url) {
+                                    PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
+                                    if (pm != null) {
+                                        PrintDocumentAdapter adapter =
+                                            view.createPrintDocumentAdapter("MFTracker Portfolio");
+                                        PrintAttributes attrs = new PrintAttributes.Builder()
+                                            .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
+                                            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                                            .build();
+                                        pm.print("MFTracker Portfolio", adapter, attrs);
+                                    }
+                                    view.destroy();
+                                }
+                            });
+                            printView.loadDataWithBaseURL(
+                                "file:///android_asset/", html, "text/html", "UTF-8", null);
                         }
                     });
-                    // Load without adding to view hierarchy to avoid replacing main UI
-                    printView.loadDataWithBaseURL(
-                        "file:///android_asset/", html, "text/html", "UTF-8", null);
+                    builder.show();
                 }
             });
         }
