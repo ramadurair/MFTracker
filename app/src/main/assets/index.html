@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MF Tracker</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --card: #111827;
+    --card2: #1a2236;
+    --border: #1e2d45;
+    --accent: #3b82f6;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --text: #f1f5f9;
+    --sub: #94a3b8;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  .header {
+    background: linear-gradient(135deg, #0f1f3d 0%, #0a0e1a 100%);
+    padding: 20px 16px 14px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .app-title { font-size: 19px; font-weight: 700; }
+  .app-title span { color: var(--accent); }
+  .header-actions { display: flex; gap: 8px; }
+  .btn {
+    background: var(--card2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 10px; padding: 7px 12px;
+    font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .btn.spinning svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SUMMARY BAR ── */
+  .summary {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; padding: 12px 16px 0;
+  }
+  .summary-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 12px;
+  }
+  .summary-label { font-size: 10px; color: var(--sub); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .summary-value { font-size: 15px; font-weight: 700; }
+  .summary-value.green { color: var(--green); }
+  .summary-value.red { color: var(--red); }
+  .summary-value.yellow { color: var(--yellow); }
+
+  /* ── STATUS ── */
+  .status-bar {
+    margin: 10px 16px 0; padding: 10px 14px; border-radius: 10px;
+    font-size: 13px; display: none;
+  }
+  .status-bar.error { background: #2d1515; border: 1px solid #7f1d1d; color: var(--red); display: block; }
+  .status-bar.loading { background: #0f1f3d; border: 1px solid var(--border); color: var(--sub); display: block; }
+  .status-bar.success { background: #052e16; border: 1px solid #166534; color: var(--green); display: block; }
+
+  /* ── PROGRESS ── */
+  .progress-bar {
+    height: 3px; background: var(--border); border-radius: 2px;
+    margin: 10px 16px 0; display: none;
+  }
+  .progress-bar.visible { display: block; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+
+  /* ── FUND CARDS ── */
+  .section-title { font-size: 11px; color: var(--sub); letter-spacing: 0.8px; text-transform: uppercase; padding: 16px 16px 8px; }
+  .funds-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+
+  .fund-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .fund-card.loading-card { opacity: 0.6; }
+  .fund-header {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  }
+  .fund-name { font-size: 13px; font-weight: 600; line-height: 1.4; flex: 1; }
+  .fund-scheme { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .fund-toggle { color: var(--sub); font-size: 18px; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+
+  .fund-body { padding: 12px 14px; }
+
+  /* ── METRICS GRID ── */
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .metric {
+    background: var(--card2); border-radius: 10px; padding: 10px 12px;
+  }
+  .metric.full-width { grid-column: 1 / -1; }
+  .metric-label { font-size: 10px; color: var(--sub); letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px; }
+  .metric-value { font-size: 15px; font-weight: 700; }
+  .metric-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .metric-value.green { color: var(--green); }
+  .metric-value.red { color: var(--red); }
+  .metric-value.yellow { color: var(--yellow); }
+
+  /* ── DIVIDER ROW ── */
+  .divider-row {
+    display: flex; align-items: center; gap: 8px;
+    margin: 10px 0 6px; color: var(--sub); font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase;
+  }
+  .divider-row::before, .divider-row::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center; padding: 60px 30px; color: var(--sub);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .empty-desc { font-size: 13px; line-height: 1.6; }
+
+  /* ── UPLOAD OVERLAY ── */
+  .upload-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+    z-index: 200; display: none; align-items: flex-end; justify-content: center;
+  }
+  .upload-overlay.open { display: flex; animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } }
+  .upload-sheet {
+    background: var(--card); border-radius: 20px 20px 0 0;
+    padding: 20px; width: 100%;
+  }
+  .sheet-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .sheet-title { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+  .sheet-desc { font-size: 13px; color: var(--sub); margin-bottom: 16px; line-height: 1.5; }
+  .file-input-wrap {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 24px;
+    text-align: center; cursor: pointer; margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+  .file-input-wrap:active { border-color: var(--accent); }
+  .file-input-wrap input { display: none; }
+  .file-input-icon { font-size: 32px; margin-bottom: 8px; }
+  .file-input-label { font-size: 14px; font-weight: 600; color: var(--accent); }
+  .file-input-hint { font-size: 12px; color: var(--sub); margin-top: 4px; }
+  .csv-format {
+    background: var(--card2); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+    font-size: 12px; color: var(--sub); font-family: monospace; line-height: 1.7;
+  }
+  .csv-format strong { color: var(--text); }
+
+  /* ── HIGH TOGGLE ── */
+  .toggle-row { display: flex; align-items: center; gap: 8px; padding: 0 16px 4px; }
+  .toggle-label { font-size: 12px; color: var(--sub); }
+  .toggle-pill {
+    display: flex; background: var(--card2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px; gap: 2px;
+  }
+  .toggle-opt {
+    padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;
+    cursor: pointer; color: var(--sub); transition: all 0.2s; border: none; background: none;
+  }
+  .toggle-opt.active { background: var(--accent); color: #fff; }
+
+  /* ── LAST UPDATE ── */
+  .last-refresh { font-size: 11px; color: var(--sub); text-align: center; padding: 8px 16px 0; }
+
+  /* ── TAB BAR ── */
+  .tab-row { display: flex; gap: 6px; padding: 0 16px 12px; }
+  .tab-btn {
+    flex: 1; background: var(--card2); border: 1px solid var(--border);
+    color: var(--sub); border-radius: 10px; padding: 8px 10px;
+    font-size: 13px; font-weight: 600; cursor: pointer; text-align: center;
+    transition: all 0.15s;
+  }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* spinner inline */
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  .print-header { display: none; }
+</style>
+</head>
+<body>
+
+<div class="print-header" id="printHeader">
+  <div style="font-size:18pt;font-weight:700;color:#111;margin-bottom:4px">📊 MF Tracker — Portfolio Report</div>
+  <div id="printMeta" style="font-size:9pt;color:#6b7280"></div>
+</div>
+
+<div class="header">
+  <div class="header-top">
+    <div class="app-title">📊 <span>MF</span> Tracker</div>
+    <div class="header-actions">
+      <button class="btn" onclick="openUpload()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Load CSV
+      </button>
+      <button class="btn" onclick="exportPDF()" id="pdfBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        PDF
+      </button>
+      <button class="btn primary" id="refreshBtn" onclick="refreshAll()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab-btn active" id="tabMF" onclick="switchTab('mf')">📊 Mutual Funds</button>
+    <button class="tab-btn" id="tabStocks" onclick="switchTab('stocks')">📈 Stocks</button>
+  </div>
+
+  <!-- Portfolio summary -->
+  <div class="summary" id="summary" style="display:none">
+    <div class="summary-card">
+      <div class="summary-label">Invested</div>
+      <div class="summary-value" id="sumInvested">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Current</div>
+      <div class="summary-value" id="sumCurrent">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Gain/Loss</div>
+      <div class="summary-value" id="sumGain">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Absolute Return</div>
+      <div class="summary-value" id="sumAbsReturn">—</div>
+    </div>
+    <div class="summary-card" id="sumCAGRCard">
+      <div class="summary-label">Weighted CAGR</div>
+      <div class="summary-value" id="sumCAGR">—</div>
+    </div>
+    <div class="summary-card" id="sumHighCard" style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="summary-label" id="sumHighLabel">52W High Value</div>
+        <div class="summary-value yellow" id="sumHigh">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="summary-label" id="sumHighGainLabel">vs High</div>
+        <div class="summary-value" id="sumHighGain">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+<div class="status-bar" id="statusBar"></div>
+<div class="last-refresh" id="lastRefresh"></div>
+<div class="toggle-row" id="toggleRow" style="display:none">
+  <span class="toggle-label">High basis:</span>
+  <div class="toggle-pill">
+    <button class="toggle-opt active" id="tog52w" onclick="setHighMode('52w')">52-Week</button>
+    <button class="toggle-opt" id="togATH" onclick="setHighMode('ath')">All-Time</button>
+  </div>
+</div>
+
+<div id="mainContent">
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">📂</div>
+    <div class="empty-title" id="emptyTitle">No portfolio loaded</div>
+    <div class="empty-desc" id="emptyDesc">Tap <strong>Load CSV</strong> to import your mutual fund holdings.<br><br>CSV must have columns:<br>Scheme Code, Purchase Quantity,<br>Purchase NAV, Purchase Date, Cost Price</div>
+  </div>
+  <div class="section-title" id="sectionTitle" style="display:none">YOUR HOLDINGS</div>
+  <div class="funds-list" id="fundsList"></div>
+</div>
+
+<!-- Upload Sheet -->
+<div class="upload-overlay" id="uploadOverlay" onclick="closeUploadOuter(event)">
+  <div class="upload-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheetTitle">Import Portfolio CSV</div>
+    <div class="sheet-desc">Select your CSV file from phone storage. It will be read locally — nothing is uploaded anywhere.</div>
+
+    <div class="file-input-wrap" onclick="openFilePicker()">
+      <input type="file" id="csvInput" accept=".csv,text/csv,text/plain,*/*" onchange="handleFileSelect(event)" style="display:none">
+      <div class="file-input-icon">📄</div>
+      <div class="file-input-label">Tap to select CSV file</div>
+      <div class="file-input-hint">From Downloads, Drive, Files, or any storage</div>
+    </div>
+
+    <div class="csv-format" id="csvFormatHint">
+      <strong>Expected CSV columns (with header row):</strong><br>
+      Scheme Code, Purchase Quantity, Purchase NAV,<br>
+      Purchase Date, Cost Price<br><br>
+      <strong>Example row:</strong><br>
+      120503, 150.234, 45.67, 15-Jan-2023, 6852.00
+    </div>
+
+    <button class="btn primary" style="width:100%;justify-content:center;padding:12px" onclick="closeUpload()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────
+let currentTab = 'mf';  // 'mf' or 'stocks'
+
+let mfHoldings = [];     // parsed from CSV
+let mfNavData = {};      // { schemeCode: { latestNAV, latestDate, high52w, high52wDate, highATH, highATHDate } }
+let mfExpandedCards = new Set();
+
+let stockHoldings = [];  // parsed from CSV: { symbol, qty, costPrice, schemeName }
+let stockNavData = {};   // { symbol: { latestNAV, latestDate, high52w, high52wDate, highATH, highATHDate } }
+let stockExpandedCards = new Set();
+
+let highMode = '52w';  // '52w' or 'ath'
+let lastRefreshTime = null;
+
+// ── Tab-aware accessors ──────────────────────────────────────────
+function getHoldings()    { return currentTab === 'mf' ? mfHoldings : stockHoldings; }
+function setHoldings(arr) { if (currentTab === 'mf') mfHoldings = arr; else stockHoldings = arr; }
+function getNavData()     { return currentTab === 'mf' ? mfNavData : stockNavData; }
+function getExpanded()    { return currentTab === 'mf' ? mfExpandedCards : stockExpandedCards; }
+function getIdKey(h)      { return currentTab === 'mf' ? h.schemeCode : h.symbol; }
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabMF').classList.toggle('active', tab === 'mf');
+  document.getElementById('tabStocks').classList.toggle('active', tab === 'stocks');
+
+  document.getElementById('sheetTitle').textContent = tab === 'mf' ? 'Import Mutual Fund CSV' : 'Import Stocks CSV';
+  document.getElementById('csvFormatHint').innerHTML = tab === 'mf'
+    ? `<strong>Expected CSV columns (with header row):</strong><br>
+       Scheme Code, Purchase Quantity, Purchase NAV,<br>
+       Purchase Date, Cost Price<br><br>
+       <strong>Example row:</strong><br>
+       120503, 150.234, 45.67, 15-Jan-2023, 6852.00`
+    : `<strong>Expected CSV columns (with header row):</strong><br>
+       Symbol, Quantity, Cost<br><br>
+       <strong>Example row:</strong><br>
+       RELIANCE, 25, 62500.00`;
+
+  document.getElementById('emptyTitle').textContent = 'No portfolio loaded';
+  document.getElementById('emptyDesc').innerHTML = tab === 'mf'
+    ? `Tap <strong>Load CSV</strong> to import your mutual fund holdings.<br><br>CSV must have columns:<br>Scheme Code, Purchase Quantity,<br>Purchase NAV, Purchase Date, Cost Price`
+    : `Tap <strong>Load CSV</strong> to import your stock holdings.<br><br>CSV must have columns:<br>Symbol, Quantity, Cost`;
+
+  document.getElementById('sectionTitle').textContent = tab === 'mf' ? 'YOUR HOLDINGS' : 'YOUR STOCKS';
+
+  renderCards();
+  updateSummary();
+  const holdings = getHoldings();
+  document.getElementById('toggleRow').style.display = holdings.length ? 'flex' : 'none';
+  if (holdings.length === 0) hideStatus();
+}
+
+// ── CSV PARSING ────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row");
+
+  // Detect delimiter
+  const delim = lines[0].includes('\t') ? '\t' : ',';
+
+  const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+
+  // Find column indices flexibly
+  function findCol(...names) {
+    for (const n of names) {
+      const idx = headers.findIndex(h => h.includes(n));
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
+  const colScheme   = findCol('scheme code', 'schemecode', 'scheme');
+  const colQty      = findCol('purchase quantity', 'quantity', 'qty', 'units');
+  const colNavBuy   = findCol('purchase nav', 'nav', 'purchase price');
+  const colDate     = findCol('purchase date', 'date');
+  const colCost     = findCol('cost price', 'cost', 'invested', 'amount');
+
+  if (colScheme < 0) throw new Error("Cannot find 'Scheme Code' column in CSV");
+  if (colQty < 0)    throw new Error("Cannot find 'Purchase Quantity' column in CSV");
+
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i], delim);
+    if (cols.length < 2) continue;
+
+    const schemeCode = cols[colScheme]?.trim().replace(/['"]/g, '');
+    if (!schemeCode || isNaN(schemeCode)) continue;
+
+    const qty      = parseFloat(cols[colQty]?.replace(/[,'"]/g, '')) || 0;
+    const buyNAV   = colNavBuy >= 0 ? parseFloat(cols[colNavBuy]?.replace(/[,'"]/g, '')) || 0 : 0;
+    const buyDate  = colDate >= 0   ? cols[colDate]?.trim().replace(/['"]/g, '') : '';
+    const costPrice = colCost >= 0  ? parseFloat(cols[colCost]?.replace(/[,'"]/g, '')) || (qty * buyNAV) : qty * buyNAV;
+
+    result.push({ schemeCode, qty, buyNAV, buyDate, costPrice, schemeName: '' });
+  }
+
+  if (result.length === 0) throw new Error("No valid data rows found in CSV");
+  return result;
+}
+
+function splitCSVLine(line, delim) {
+  const result = [];
+  let cur = '', inQuote = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuote = !inQuote; }
+    else if (ch === delim && !inQuote) { result.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseStockCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row");
+
+  const delim = lines[0].includes('\t') ? '\t' : ',';
+  const headers = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+
+  function findCol(...names) {
+    for (const n of names) {
+      const idx = headers.findIndex(h => h.includes(n));
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  }
+
+  const colSymbol = findCol('symbol', 'ticker', 'scrip', 'stock');
+  const colQty    = findCol('quantity', 'qty', 'units', 'shares');
+  const colCost   = findCol('cost', 'invested', 'amount', 'value');
+
+  if (colSymbol < 0) throw new Error("Cannot find 'Symbol' column in CSV");
+  if (colQty < 0)    throw new Error("Cannot find 'Quantity' column in CSV");
+  if (colCost < 0)   throw new Error("Cannot find 'Cost' column in CSV");
+
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i], delim);
+    if (cols.length < 2) continue;
+
+    const symbol = cols[colSymbol]?.trim().replace(/['"]/g, '').toUpperCase();
+    if (!symbol) continue;
+
+    const qty      = parseFloat(cols[colQty]?.replace(/[,'"]/g, '')) || 0;
+    const buyPrice = parseFloat(cols[colCost]?.replace(/[,'"]/g, '')) || 0; // per-share average buy price
+    const costPrice = qty * buyPrice; // total invested amount
+
+    result.push({ symbol, qty, costPrice, buyPrice, schemeName: '' });
+  }
+
+  if (result.length === 0) throw new Error("No valid data rows found in CSV");
+  return result;
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      if (currentTab === 'mf') {
+        mfHoldings = parseCSV(e.target.result);
+        saveHoldings();
+        closeUpload();
+        showStatus(`✓ Loaded ${mfHoldings.length} fund(s) from ${file.name}`, 'success');
+      } else {
+        stockHoldings = parseStockCSV(e.target.result);
+        saveHoldings();
+        closeUpload();
+        showStatus(`✓ Loaded ${stockHoldings.length} stock(s) from ${file.name}`, 'success');
+      }
+      renderCards();
+      refreshAll();
+    } catch(err) {
+      showStatus('CSV Error: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── NAV FETCHING ───────────────────────────────────────────────────
+async function fetchSchemeData(schemeCode) {
+  // Full history gives us latest NAV + 52w high in one call
+  const url = `https://api.mfapi.in/mf/${schemeCode}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+
+  const navHistory = data.data; // [{date: "DD-MM-YYYY", nav: "123.45"}, ...]
+  const schemeName = data.meta?.scheme_name || '';
+
+  if (!navHistory || navHistory.length === 0) throw new Error('No NAV data');
+
+  // Latest is first entry
+  const latestNAV  = parseFloat(navHistory[0].nav);
+  const latestDate = navHistory[0].date;
+
+  // 52-week high: look at entries within last 365 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
+
+  let high52w = 0, high52wDate = '';
+  let highATH = 0, highATHDate = '';
+  for (const entry of navHistory) {
+    const d = parseMFDate(entry.date);
+    const nav = parseFloat(entry.nav);
+    // All-time high — scan everything
+    if (nav > highATH) { highATH = nav; highATHDate = entry.date; }
+    // 52-week high — stop once older than 365 days
+    if (d >= cutoff && nav > high52w) { high52w = nav; high52wDate = entry.date; }
+  }
+
+  return { latestNAV, latestDate, high52w, high52wDate, highATH, highATHDate, schemeName };
+}
+
+// ── STOCK QUOTE FETCHING (Yahoo Finance, NSE) ───────────────────────
+async function fetchStockData(symbol) {
+  // Yahoo Finance unofficial chart endpoint — no key required.
+  // .NS suffix = NSE. 5y range gives latest price + enough history for 52w/ATH high.
+  const ySymbol = symbol.includes('.') ? symbol : `${symbol}.NS`;
+  const hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+
+  let lastErr = null;
+  for (const host of hosts) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const url = `https://${host}/v8/finance/chart/${ySymbol}?interval=1d&range=5y`;
+        const res = await fetch(url, {
+          signal: AbortSignal.timeout(15000),
+          headers: { 'Accept': 'application/json' }
+        });
+        if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
+        const json = await res.json();
+
+        const result = json?.chart?.result?.[0];
+        if (!result) { lastErr = new Error('Symbol not found'); continue; }
+
+        const meta = result.meta;
+        const timestamps = result.timestamp;
+        const closes = result.indicators?.quote?.[0]?.close;
+        if (!timestamps || !closes) { lastErr = new Error('No price history'); continue; }
+
+        const latestNAV  = meta.regularMarketPrice ?? closes[closes.length - 1];
+        const latestDate = new Date(meta.regularMarketTime ? meta.regularMarketTime * 1000 : timestamps[timestamps.length-1] * 1000)
+                              .toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+        const schemeName = meta.longName || meta.shortName || symbol;
+
+        const cutoff = Date.now() / 1000 - 365 * 24 * 3600;
+        let high52w = 0, high52wDate = '';
+        let highATH = 0, highATHDate = '';
+
+        for (let i = 0; i < timestamps.length; i++) {
+          const price = closes[i];
+          if (price == null) continue;
+          const ts = timestamps[i];
+          const dateLabel = new Date(ts * 1000).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+          if (price > highATH) { highATH = price; highATHDate = dateLabel; }
+          if (ts >= cutoff && price > high52w) { high52w = price; high52wDate = dateLabel; }
+        }
+        if (meta.fiftyTwoWeekHigh && meta.fiftyTwoWeekHigh > 0) {
+          high52w = Math.max(high52w, meta.fiftyTwoWeekHigh);
+        }
+        if (latestNAV > highATH) { highATH = latestNAV; highATHDate = latestDate; }
+        if (latestNAV > high52w) { high52w = latestNAV; high52wDate = latestDate; }
+
+        return { latestNAV, latestDate, high52w, high52wDate, highATH, highATHDate, schemeName };
+      } catch (err) {
+        lastErr = err;
+        await new Promise(r => setTimeout(r, 300)); // brief backoff before retry
+      }
+    }
+  }
+  throw lastErr || new Error('Failed to fetch');
+}
+
+function parseMFDate(dateStr) {
+  // Handles: "DD-MM-YYYY", "DD-Mon-YYYY", "YYYY-MM-DD"
+  if (!dateStr) return new Date(0);
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return new Date(dateStr);
+  const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  // Detect YYYY-MM-DD: first part is 4-digit year
+  if (parts[0].length === 4) {
+    const [yyyy, mm, dd] = parts;
+    return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+  }
+  // DD-MM-YYYY or DD-Mon-YYYY
+  const [dd, mm, yyyy] = parts;
+  const month = isNaN(mm) ? (months[mm.toLowerCase().slice(0,3)] ?? 0) : parseInt(mm) - 1;
+  return new Date(parseInt(yyyy), month, parseInt(dd));
+}
+
+async function refreshAll() {
+  const holdings = getHoldings();
+  if (holdings.length === 0) {
+    showStatus('Load a CSV file first', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  showProgress(0);
+
+  let done = 0;
+  let errors = 0;
+  const navData = getNavData();
+  const isMF = currentTab === 'mf';
+
+  showStatus(`Fetching ${isMF ? 'NAV' : 'price'} for ${holdings.length} ${isMF ? 'fund' : 'stock'}(s)…`, 'loading');
+
+  // Fetch all holdings (sequentially to respect rate limits)
+  for (let i = 0; i < holdings.length; i++) {
+    const h = holdings[i];
+    const key = getIdKey(h);
+    try {
+      const d = isMF ? await fetchSchemeData(h.schemeCode) : await fetchStockData(h.symbol);
+      navData[key] = d;
+      if (!h.schemeName) h.schemeName = d.schemeName;
+    } catch(err) {
+      errors++;
+      navData[key] = { error: err.message };
+    }
+    done++;
+    showProgress(Math.round((done / holdings.length) * 100));
+    updateCard(key);
+    updateSummary();
+    // Small delay between stock requests to reduce chance of rate limiting
+    if (!isMF && i < holdings.length - 1) {
+      await new Promise(r => setTimeout(r, 250));
+    }
+  }
+
+  // Sort alphabetically by name now that all names are loaded
+  holdings.sort((a, b) => {
+    const an = a.schemeName || getIdKey(a);
+    const bn = b.schemeName || getIdKey(b);
+    return an.localeCompare(bn);
+  });
+  saveHoldings();
+  renderCards();
+
+  btn.classList.remove('spinning');
+  hideProgress();
+  lastRefreshTime = new Date();
+  updateLastRefresh();
+
+  document.getElementById('toggleRow').style.display = 'flex';
+  if (errors === 0) {
+    hideStatus();
+  } else {
+    showStatus(`⚠ ${errors} ${isMF ? 'fund' : 'stock'}(s) failed to fetch. Check ${isMF ? 'scheme codes' : 'symbols'}.`, 'error');
+  }
+  saveHoldings();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────
+function renderCards() {
+  const holdings = getHoldings();
+  const list = document.getElementById('fundsList');
+  list.innerHTML = '';
+  document.getElementById('emptyState').style.display = holdings.length ? 'none' : 'block';
+  document.getElementById('sectionTitle').style.display = holdings.length ? 'block' : 'none';
+  document.getElementById('summary').style.display = holdings.length ? 'grid' : 'none';
+
+  holdings.forEach(h => {
+    const key = getIdKey(h);
+    const card = document.createElement('div');
+    card.className = 'fund-card';
+    card.id = `card-${currentTab}-${key}`;
+    list.appendChild(card);
+    renderCardContent(card, h);
+  });
+}
+
+function updateCard(key) {
+  const card = document.getElementById(`card-${currentTab}-${key}`);
+  if (!card) return;
+  const holdings = getHoldings();
+  const h = holdings.find(x => getIdKey(x) === key);
+  if (h) renderCardContent(card, h);
+}
+
+function renderCardContent(card, h) {
+  const isMF = currentTab === 'mf';
+  const key = getIdKey(h);
+  const navData = getNavData();
+  const expanded = getExpanded().has(key);
+  const d = navData[key];
+
+  let bodyHTML = '';
+
+  if (!d) {
+    bodyHTML = `<div class="fund-body"><div style="color:var(--sub);font-size:13px">⏳ Loading…</div></div>`;
+  } else if (d.error) {
+    bodyHTML = `<div class="fund-body"><div style="color:var(--red);font-size:13px">⚠ Error: ${d.error}</div></div>`;
+  } else {
+    const currentValue = h.qty * d.latestNAV;
+    const gainVsCost   = currentValue - h.costPrice;
+    const gainClass    = v => v >= 0 ? 'green' : 'red';
+    const fmt          = v => '₹' + Math.abs(v).toLocaleString('en-IN', {maximumFractionDigits: 2});
+    const sign         = v => v >= 0 ? '+' : '-';
+    const unitLabel    = isMF ? 'units' : 'shares';
+    const priceLabel   = isMF ? 'NAV' : 'Price';
+
+    const highNAV      = highMode === 'ath' ? d.highATH  : d.high52w;
+    const highDate     = highMode === 'ath' ? d.highATHDate : d.high52wDate;
+    const highLabel    = highMode === 'ath' ? 'All-Time High' : '52-Week High';
+    const highShort    = highMode === 'ath' ? 'ATH' : '52W';
+    const gainVsHigh   = currentValue - (h.qty * highNAV);
+
+    // ── Returns ──
+    const absReturnPct = h.costPrice > 0 ? ((currentValue - h.costPrice) / h.costPrice) * 100 : null;
+
+    // CAGR: only computable for MF (has buyDate). Stocks CSV has no buy date.
+    let cagrPct = null;
+    let yearsHeldForCagr = null;
+    if (isMF && h.buyDate && h.costPrice > 0 && currentValue > 0) {
+      const buyDateParsed = parseMFDate(h.buyDate);
+      const today = new Date();
+      const yearsHeld = (today - buyDateParsed) / (365.25 * 24 * 3600 * 1000);
+      if (yearsHeld >= (1/12)) {
+        yearsHeldForCagr = yearsHeld;
+        if (yearsHeld >= 1) {
+          cagrPct = (Math.pow(currentValue / h.costPrice, 1 / yearsHeld) - 1) * 100;
+        } else {
+          cagrPct = (absReturnPct / yearsHeld);
+        }
+      }
+    }
+
+    const fmtPct = p => (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+    const yearsLabel = (() => {
+      if (!isMF || !h.buyDate) return '';
+      const bp = parseMFDate(h.buyDate);
+      const yrs = (new Date() - bp) / (365.25 * 24 * 3600 * 1000);
+      if (yrs < 1) return `${Math.round(yrs * 12)}m held`;
+      return `${yrs.toFixed(1)}y held`;
+    })();
+
+    const investedSub = isMF ? `@ ₹${h.buyNAV} NAV` : `@ ₹${(h.buyPrice||0).toLocaleString('en-IN', {maximumFractionDigits: 2})}/share`;
+
+    // Returns row — CAGR tile only for MF; stocks just repeat full-width absolute return
+    const returnsRowHTML = isMF ? `
+        <div class="metric">
+          <div class="metric-label">Absolute Return</div>
+          <div class="metric-value ${absReturnPct !== null ? gainClass(absReturnPct) : ''}">${absReturnPct !== null ? fmtPct(absReturnPct) : '—'}</div>
+          <div class="metric-sub">${yearsLabel}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">${cagrPct !== null && yearsHeldForCagr >= 1 ? 'CAGR' : 'Annualised Return'}</div>
+          <div class="metric-value ${cagrPct !== null ? gainClass(cagrPct) : ''}">${cagrPct !== null ? fmtPct(cagrPct) : '—'}</div>
+          <div class="metric-sub">${cagrPct !== null && yearsHeldForCagr < 1 ? 'simple annualised' : 'compounded p.a.'}</div>
+        </div>` : `
+        <div class="metric full-width">
+          <div class="metric-label">Absolute Return</div>
+          <div class="metric-value ${absReturnPct !== null ? gainClass(absReturnPct) : ''}">${absReturnPct !== null ? fmtPct(absReturnPct) : '—'}</div>
+          <div class="metric-sub">vs cost (no buy date — CAGR unavailable)</div>
+        </div>`;
+
+    bodyHTML = `
+    <div class="fund-body">
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Latest ${priceLabel}</div>
+          <div class="metric-value">₹${d.latestNAV.toLocaleString('en-IN', {maximumFractionDigits: 4})}</div>
+          <div class="metric-sub">${d.latestDate}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Current Value</div>
+          <div class="metric-value">${fmt(currentValue)}</div>
+          <div class="metric-sub">${h.qty.toLocaleString('en-IN', {maximumFractionDigits: isMF?3:0})} ${unitLabel}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Invested (Cost)</div>
+          <div class="metric-value">₹${h.costPrice.toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+          <div class="metric-sub">${investedSub}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Gain / Loss</div>
+          <div class="metric-value ${gainClass(gainVsCost)}">${sign(gainVsCost)}${fmt(gainVsCost)}</div>
+          <div class="metric-sub">vs cost price</div>
+        </div>
+        ${returnsRowHTML}
+      </div>
+
+      <div class="divider-row">${highLabel}</div>
+
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">${highShort} High ${priceLabel}</div>
+          <div class="metric-value yellow">₹${highNAV.toLocaleString('en-IN', {maximumFractionDigits: 4})}</div>
+          <div class="metric-sub">${highDate}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Value @ ${highShort} High</div>
+          <div class="metric-value yellow">₹${(h.qty * highNAV).toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+          <div class="metric-sub">${h.qty.toLocaleString('en-IN', {maximumFractionDigits: isMF?3:0})} ${unitLabel}</div>
+        </div>
+        <div class="metric full-width">
+          <div class="metric-label">Gain / Loss vs ${highLabel}</div>
+          <div class="metric-value ${gainClass(gainVsHigh)}">${sign(gainVsHigh)}${fmt(Math.abs(gainVsHigh))}</div>
+          <div class="metric-sub">Current value vs ${highLabel.toLowerCase()} ${priceLabel.toLowerCase()} value</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const displayName = h.schemeName || (isMF ? `Scheme ${h.schemeCode}` : h.symbol);
+  const shortName   = displayName.length > 55 ? displayName.slice(0, 55) + '…' : displayName;
+  const metaLine    = isMF
+    ? `Code: ${h.schemeCode} · Bought: ${h.buyDate || 'N/A'}`
+    : `Symbol: ${h.symbol}`;
+
+  card.innerHTML = `
+    <div class="fund-header" onclick="toggleCard('${key}')">
+      <div>
+        <div class="fund-name">${shortName}</div>
+        <div class="fund-scheme">${metaLine}</div>
+      </div>
+      <div class="fund-toggle">${expanded ? '▲' : '▽'}</div>
+    </div>
+    ${expanded ? bodyHTML : ''}
+  `;
+}
+
+function toggleCard(key) {
+  const expandedCards = getExpanded();
+  if (expandedCards.has(key)) {
+    expandedCards.delete(key);
+  } else {
+    expandedCards.add(key);
+  }
+  updateCard(key);
+}
+
+// ── SUMMARY ────────────────────────────────────────────────────────
+function updateSummary() {
+  const isMF = currentTab === 'mf';
+  const holdings = getHoldings();
+  const navData = getNavData();
+
+  let totalCost = 0, totalCurrent = 0, totalHigh = 0, hasData = false;
+  let weightedCAGRNum = 0, weightedCAGRDen = 0;
+
+  for (const h of holdings) {
+    const key = getIdKey(h);
+    const d = navData[key];
+    if (!d || d.error) continue;
+    const highNAV    = highMode === 'ath' ? d.highATH : d.high52w;
+    const curVal     = h.qty * d.latestNAV;
+    totalCost       += h.costPrice;
+    totalCurrent    += curVal;
+    totalHigh       += h.qty * (highNAV || 0);
+    hasData = true;
+
+    // Weighted CAGR: only meaningful for MF (has buyDate)
+    if (isMF && h.buyDate && h.costPrice > 0) {
+      const bp = parseMFDate(h.buyDate);
+      const yrs = (new Date() - bp) / (365.25 * 24 * 3600 * 1000);
+      if (yrs >= (1/12)) {
+        const cagr = yrs >= 1
+          ? (Math.pow(curVal / h.costPrice, 1 / yrs) - 1) * 100
+          : ((curVal - h.costPrice) / h.costPrice) * 100 / yrs;
+        weightedCAGRNum += cagr * h.costPrice;
+        weightedCAGRDen += h.costPrice;
+      }
+    }
+  }
+
+  const cagrCard = document.getElementById('sumCAGRCard');
+  if (!hasData) {
+    document.getElementById('summary').style.display = holdings.length ? 'grid' : 'none';
+    return;
+  }
+
+  const gain     = totalCurrent - totalCost;
+  const gainHigh = totalCurrent - totalHigh;
+  const fmt      = v => '₹' + v.toLocaleString('en-IN', {maximumFractionDigits: 0});
+  const fmtPct   = p => (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+
+  document.getElementById('sumInvested').textContent = fmt(totalCost);
+  document.getElementById('sumCurrent').textContent  = fmt(totalCurrent);
+
+  const gainEl = document.getElementById('sumGain');
+  gainEl.textContent = (gain >= 0 ? '+' : '-') + fmt(Math.abs(gain));
+  gainEl.className   = 'summary-value ' + (gain >= 0 ? 'green' : 'red');
+
+  // Absolute return %
+  const absRetPct = totalCost > 0 ? ((totalCurrent - totalCost) / totalCost) * 100 : null;
+  const absEl = document.getElementById('sumAbsReturn');
+  if (absRetPct !== null) {
+    absEl.textContent = fmtPct(absRetPct);
+    absEl.className   = 'summary-value ' + (absRetPct >= 0 ? 'green' : 'red');
+  }
+
+  // Weighted CAGR — MF only
+  if (isMF) {
+    cagrCard.style.display = '';
+    const cagrEl = document.getElementById('sumCAGR');
+    if (weightedCAGRDen > 0) {
+      const wCagr = weightedCAGRNum / weightedCAGRDen;
+      cagrEl.textContent = fmtPct(wCagr);
+      cagrEl.className   = 'summary-value ' + (wCagr >= 0 ? 'green' : 'red');
+    } else {
+      cagrEl.textContent = '—';
+      cagrEl.className   = 'summary-value';
+    }
+  } else {
+    cagrCard.style.display = 'none';
+  }
+
+  document.getElementById('sumHighLabel').textContent     = (highMode === 'ath' ? 'All-Time' : '52W') + ' High Value';
+  document.getElementById('sumHighGainLabel').textContent = 'vs ' + (highMode === 'ath' ? 'ATH' : '52W High');
+  document.getElementById('sumHigh').textContent          = fmt(totalHigh);
+
+  const highGainEl = document.getElementById('sumHighGain');
+  highGainEl.textContent = (gainHigh >= 0 ? '+' : '-') + fmt(Math.abs(gainHigh));
+  highGainEl.className   = 'summary-value ' + (gainHigh >= 0 ? 'green' : 'red');
+
+  document.getElementById('summary').style.display = 'grid';
+}
+
+// ── PERSIST ────────────────────────────────────────────────────────
+function saveHoldings() {
+  try {
+    localStorage.setItem('mf_holdings', JSON.stringify(mfHoldings));
+    localStorage.setItem('stock_holdings', JSON.stringify(stockHoldings));
+  } catch(e) {}
+}
+function loadHoldings() {
+  try {
+    const s1 = localStorage.getItem('mf_holdings');
+    if (s1) mfHoldings = JSON.parse(s1);
+    const s2 = localStorage.getItem('stock_holdings');
+    if (s2) stockHoldings = JSON.parse(s2);
+  } catch(e) {}
+}
+
+// ── UI HELPERS ─────────────────────────────────────────────────────
+function openUpload() { document.getElementById('uploadOverlay').classList.add('open'); }
+function closeUpload() { document.getElementById('uploadOverlay').classList.remove('open'); }
+function closeUploadOuter(e) { if (e.target === document.getElementById('uploadOverlay')) closeUpload(); }
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusBar');
+  el.textContent = msg;
+  el.className = `status-bar ${type}`;
+}
+function hideStatus() { document.getElementById('statusBar').className = 'status-bar'; }
+
+function setHighMode(mode) {
+  highMode = mode;
+  document.getElementById('tog52w').className = 'toggle-opt' + (mode === '52w' ? ' active' : '');
+  document.getElementById('togATH').className  = 'toggle-opt' + (mode === 'ath' ? ' active' : '');
+  // Re-render all expanded cards and update summary
+  getHoldings().forEach(h => updateCard(getIdKey(h)));
+  updateSummary();
+}
+
+function showProgress(pct) {
+  document.getElementById('progressBar').classList.add('visible');
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+function hideProgress() {
+  document.getElementById('progressBar').classList.remove('visible');
+  document.getElementById('progressFill').style.width = '0%';
+}
+
+function updateLastRefresh() {
+  const el = document.getElementById('lastRefresh');
+  if (!lastRefreshTime) { el.textContent = ''; return; }
+  el.textContent = 'Last updated: ' + lastRefreshTime.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+}
+
+// ── FILE PICKER ────────────────────────────────────────────────────
+function openFilePicker() {
+  // Trigger the hidden input — WebChromeClient.onShowFileChooser fires on Android
+  document.getElementById('csvInput').click();
+}
+
+// Called directly from Android MainActivity with raw CSV text
+window.receiveCSVContent = function(csvText) {
+  closeUpload();
+  try {
+    if (currentTab === 'mf') {
+      mfHoldings = parseCSV(csvText);
+      saveHoldings();
+      showStatus('✓ Loaded ' + mfHoldings.length + ' fund(s)', 'success');
+    } else {
+      stockHoldings = parseStockCSV(csvText);
+      saveHoldings();
+      showStatus('✓ Loaded ' + stockHoldings.length + ' stock(s)', 'success');
+    }
+    renderCards();
+    refreshAll();
+  } catch(err) {
+    showStatus('CSV Error: ' + err.message, 'error');
+  }
+};
+
+// ── INIT ───────────────────────────────────────────────────────────
+function init() {
+  loadHoldings();
+  if (mfHoldings.length > 0 && mfHoldings[0]) mfExpandedCards.add(mfHoldings[0].schemeCode);
+  if (stockHoldings.length > 0 && stockHoldings[0]) stockExpandedCards.add(stockHoldings[0].symbol);
+
+  if (getHoldings().length > 0) {
+    renderCards();
+    document.getElementById('toggleRow').style.display = 'flex';
+    refreshAll();
+  }
+}
+
+// ── EXPORT PDF ─────────────────────────────────────────────────────
+function exportPDF() {
+  const isMF = currentTab === 'mf';
+  const holdings = getHoldings();
+  const navData = getNavData();
+
+  if (holdings.length === 0) { showStatus('Load a CSV first before exporting', 'error'); return; }
+
+  const sorted = [...holdings].sort((a,b) => {
+    const an = a.schemeName || getIdKey(a);
+    const bn = b.schemeName || getIdKey(b);
+    return an.localeCompare(bn);
+  });
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  const timeStr = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+
+  // Portfolio totals
+  let totalCost = 0, totalCurrent = 0, weightedCAGRNum = 0, weightedCAGRDen = 0;
+  for (const h of sorted) {
+    const key = getIdKey(h);
+    const d = navData[key];
+    if (!d || d.error) continue;
+    const cur = h.qty * d.latestNAV;
+    totalCost += h.costPrice;
+    totalCurrent += cur;
+    if (isMF && h.buyDate && h.costPrice > 0) {
+      const yrs = (now - parseMFDate(h.buyDate)) / (365.25*24*3600*1000);
+      if (yrs >= 1/12) {
+        const cagr = yrs >= 1 ? (Math.pow(cur/h.costPrice, 1/yrs)-1)*100 : ((cur-h.costPrice)/h.costPrice)*100/yrs;
+        weightedCAGRNum += cagr * h.costPrice;
+        weightedCAGRDen += h.costPrice;
+      }
+    }
+  }
+  const totalGain = totalCurrent - totalCost;
+  const absRet = totalCost > 0 ? ((totalCurrent-totalCost)/totalCost)*100 : null;
+  const wCagr  = (isMF && weightedCAGRDen > 0) ? weightedCAGRNum/weightedCAGRDen : null;
+
+  const fmt    = v => '₹' + Math.abs(v).toLocaleString('en-IN', {maximumFractionDigits:0});
+  const fmtDec = v => '₹' + Math.abs(v).toLocaleString('en-IN', {maximumFractionDigits:2});
+  const fmtPct = p => (p>=0?'+':'')+p.toFixed(2)+'%';
+  const gc     = v => v >= 0 ? 'color:#16a34a' : 'color:#dc2626';
+  const priceLabel = isMF ? 'NAV' : 'Price';
+  const nameLabel   = isMF ? 'Fund Name' : 'Stock Name';
+
+  // Build rows
+  let rows = '';
+  sorted.forEach((h, i) => {
+    const key = getIdKey(h);
+    const d = navData[key];
+    const bg = i % 2 === 0 ? '#fff' : '#f9fafb';
+    const idCol = isMF ? `<td>${h.buyDate||'—'}</td>` : '';
+    if (!d || d.error) {
+      const colspan = isMF ? 8 : 7;
+      rows += `<tr style="background:${bg}">
+        <td style="text-align:left">${h.schemeName || key}</td>
+        ${idCol}
+        <td colspan="${colspan}" style="color:#dc2626;text-align:center">${d ? d.error : 'No data'}</td>
+      </tr>`;
+      return;
+    }
+    const cur = h.qty * d.latestNAV;
+    const gain = cur - h.costPrice;
+    const absP = h.costPrice > 0 ? ((cur-h.costPrice)/h.costPrice)*100 : null;
+    let cagrP = null;
+    if (isMF && h.buyDate && h.costPrice > 0) {
+      const yrs = (now - parseMFDate(h.buyDate)) / (365.25*24*3600*1000);
+      if (yrs >= 1/12) cagrP = yrs>=1 ? (Math.pow(cur/h.costPrice,1/yrs)-1)*100 : ((cur-h.costPrice)/h.costPrice)*100/yrs;
+    }
+    const highNAV = highMode==='ath' ? d.highATH : d.high52w;
+    const highVal = h.qty * highNAV;
+    const gainVsHigh = cur - highVal;
+
+    const cagrCol = isMF ? `<td style="${cagrP!==null?gc(cagrP):''}">${cagrP!==null?fmtPct(cagrP):'—'}</td>` : '';
+
+    rows += `<tr style="background:${bg}">
+      <td style="text-align:left;max-width:200px">${h.schemeName || key}</td>
+      ${idCol}
+      <td>${fmtDec(h.costPrice)}</td>
+      <td>${fmtDec(cur)}</td>
+      <td style="${gc(gain)}">${gain>=0?'+':''}${fmtDec(gain)}</td>
+      <td style="${absP!==null?gc(absP):''}">${absP!==null?fmtPct(absP):'—'}</td>
+      ${cagrCol}
+      <td>₹${d.latestNAV.toLocaleString('en-IN',{maximumFractionDigits:4})}</td>
+      <td style="color:#d97706">₹${highNAV.toLocaleString('en-IN',{maximumFractionDigits:4})}</td>
+      <td style="${gc(gainVsHigh)}">${gainVsHigh>=0?'+':''}${fmtDec(gainVsHigh)}</td>
+    </tr>`;
+  });
+
+  const highModeLabel = highMode === 'ath' ? 'ATH' : '52W';
+  const reportTitle = isMF ? 'MF Tracker — Mutual Fund Portfolio Report' : 'MF Tracker — Stock Portfolio Report';
+  const itemWord = isMF ? 'fund' : 'stock';
+
+  const buyDateHeader = isMF ? '<th>Buy Date</th>' : '';
+  const cagrHeader     = isMF ? '<th>CAGR</th>' : '';
+  const cagrFooter     = isMF ? `<td style="${wCagr!==null?gc(wCagr):''}">${wCagr!==null?fmtPct(wCagr):'—'}</td>` : '';
+  const totalColspan   = isMF ? 2 : 1;
+  const cagrSummaryCard = isMF ? `<div class="scard"><div class="slabel">Weighted CAGR</div><div class="sval ${wCagr!==null?(wCagr>=0?'green':'red'):''}">${wCagr!==null?fmtPct(wCagr):'—'}</div></div>` : '';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${reportTitle} — ${dateStr}</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm 10mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 8pt; color: #111; background: #fff; }
+  h1 { font-size: 14pt; font-weight: 700; margin-bottom: 2px; }
+  .meta { font-size: 7.5pt; color: #6b7280; margin-bottom: 10px; }
+  .summary-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .scard { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 10px; min-width: 110px; }
+  .slabel { font-size: 6.5pt; color: #6b7280; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
+  .sval { font-size: 10pt; font-weight: 700; }
+  .green { color: #16a34a; } .red { color: #dc2626; } .yellow { color: #d97706; }
+  table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+  thead tr { background: #1e3a5f; color: #fff; }
+  thead th { padding: 5px 6px; text-align: right; font-weight: 600; white-space: nowrap; }
+  thead th:first-child { text-align: left; }
+  tbody td { padding: 4px 6px; text-align: right; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+  tbody td:first-child { text-align: left; font-size: 7pt; }
+  tbody td:nth-child(2) { color: #6b7280; white-space: nowrap; }
+  tfoot tr { background: #f3f4f6; font-weight: 700; border-top: 2px solid #d1d5db; }
+  tfoot td { padding: 5px 6px; text-align: right; }
+  tfoot td:first-child { text-align: left; }
+</style>
+</head><body>
+<h1>📊 ${reportTitle}</h1>
+<div class="meta">Generated: ${dateStr}, ${timeStr} &nbsp;·&nbsp; ${sorted.length} ${itemWord}(s) &nbsp;·&nbsp; High basis: ${highModeLabel}</div>
+
+<div class="summary-row">
+  <div class="scard"><div class="slabel">Total Invested</div><div class="sval">${fmt(totalCost)}</div></div>
+  <div class="scard"><div class="slabel">Current Value</div><div class="sval">${fmt(totalCurrent)}</div></div>
+  <div class="scard"><div class="slabel">Total Gain/Loss</div><div class="sval ${totalGain>=0?'green':'red'}">${totalGain>=0?'+':''}${fmt(totalGain)}</div></div>
+  <div class="scard"><div class="slabel">Absolute Return</div><div class="sval ${absRet!==null?(absRet>=0?'green':'red'):''}">${absRet!==null?fmtPct(absRet):'—'}</div></div>
+  ${cagrSummaryCard}
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;width:22%">${nameLabel}</th>
+      ${buyDateHeader}
+      <th>Invested</th>
+      <th>Current Value</th>
+      <th>Gain / Loss</th>
+      <th>Abs Return</th>
+      ${cagrHeader}
+      <th>Latest ${priceLabel}</th>
+      <th>${highModeLabel} High ${priceLabel}</th>
+      <th>vs ${highModeLabel} High</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+  <tfoot>
+    <tr>
+      <td colspan="${totalColspan}">TOTAL (${sorted.length} ${itemWord}s)</td>
+      <td>${fmt(totalCost)}</td>
+      <td>${fmt(totalCurrent)}</td>
+      <td style="${gc(totalGain)}">${totalGain>=0?'+':''}${fmt(totalGain)}</td>
+      <td style="${absRet!==null?gc(absRet):''}">${absRet!==null?fmtPct(absRet):'—'}</td>
+      ${cagrFooter}
+      <td colspan="3"></td>
+    </tr>
+  </tfoot>
+</table>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) {
+    // Desktop browser: open in new window and print
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => { w.print(); }, 400);
+  } else if (window.AndroidBridge && window.AndroidBridge.printReport) {
+    // Android WebView: pass full report HTML to native print manager
+    window.AndroidBridge.printReport(html);
+  } else {
+    // Fallback: blob download
+    const blob = new Blob([html], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `MFTracker_${currentTab}_${dateStr.replace(/ /g,'_')}.html`;
+    a.click();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
