@@ -25,4 +25,6 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
 }
-dependencies {}
+dependencies {
+    implementation 'androidx.core:core:1.12.0'
+}

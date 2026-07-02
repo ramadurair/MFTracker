@@ -7,9 +7,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.print.PrintAttributes;
-import android.print.PrintDocumentAdapter;
-import android.print.PrintManager;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
@@ -23,7 +20,11 @@ import android.webkit.WebViewClient;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
+import androidx.core.content.FileProvider;
+
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -35,39 +36,41 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
 
     public class AndroidBridge {
+        // Write HTML report to a temp file and open Android share sheet.
+        // User can choose: Print, Save to Drive, Share via Gmail/WhatsApp, etc.
+        // This does NOT touch the main WebView at all.
         @JavascriptInterface
-        public void printReport(final String html) {
+        public void shareReport(final String html, final String filename) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(MainActivity.this);
-                    builder.setTitle("MFTracker PDF");
-                    builder.setMessage("Opening print dialog...");
-                    builder.setPositiveButton("OK", new android.content.DialogInterface.OnClickListener() {
-                        public void onClick(android.content.DialogInterface dialog, int which) {
-                            final WebView printView = new WebView(MainActivity.this);
-                            printView.getSettings().setJavaScriptEnabled(true);
-                            printView.setWebViewClient(new WebViewClient() {
-                                @Override
-                                public void onPageFinished(WebView view, String url) {
-                                    PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
-                                    if (pm != null) {
-                                        PrintDocumentAdapter adapter =
-                                            view.createPrintDocumentAdapter("MFTracker Portfolio");
-                                        PrintAttributes attrs = new PrintAttributes.Builder()
-                                            .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
-                                            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-                                            .build();
-                                        pm.print("MFTracker Portfolio", adapter, attrs);
-                                    }
-                                    view.destroy();
-                                }
-                            });
-                            printView.loadDataWithBaseURL(
-                                "file:///android_asset/", html, "text/html", "UTF-8", null);
-                        }
-                    });
-                    builder.show();
+                    try {
+                        // Write HTML to cache directory
+                        File cacheDir = getCacheDir();
+                        File reportFile = new File(cacheDir, filename);
+                        FileWriter fw = new FileWriter(reportFile);
+                        fw.write(html);
+                        fw.close();
+
+                        // Get URI via FileProvider (required for Android 7+)
+                        Uri fileUri = FileProvider.getUriForFile(
+                            MainActivity.this,
+                            getPackageName() + ".fileprovider",
+                            reportFile
+                        );
+
+                        // Open share sheet — user picks Print, Drive, Gmail, etc.
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/html");
+                        shareIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
+                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, "MFTracker Portfolio Report");
+                        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                        startActivity(Intent.createChooser(shareIntent, "Share / Print Report"));
+                    } catch (Exception e) {
+                        webView.evaluateJavascript(
+                            "showStatus('Export failed: " + e.getMessage() + "', 'error');", null);
+                    }
                 }
             });
         }
@@ -137,7 +140,7 @@ public class MainActivity extends Activity {
 
         webView.loadUrl("file:///android_asset/index.html");
 
-        // Back button: minimize app instead of exiting (Android 13+)
+        // Back button: minimize app (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT,
@@ -172,8 +175,7 @@ public class MainActivity extends Activity {
                             .replace("\\", "\\\\")
                             .replace("`", "\\`")
                             .replace("$", "\\$");
-                        String js = "receiveCSVContent(`" + csvContent + "`);";
-                        webView.evaluateJavascript(js, null);
+                        webView.evaluateJavascript("receiveCSVContent(`" + csvContent + "`);", null);
                         filePathCallback.onReceiveValue(null);
                     } catch (Exception e) {
                         webView.evaluateJavascript(
@@ -190,7 +192,6 @@ public class MainActivity extends Activity {
         }
     }
 
-    // Fallback for Android < 13
     @Override
     public void onBackPressed() {
         moveTaskToBack(true);
