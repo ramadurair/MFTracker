@@ -31,19 +31,26 @@ jobs:
 
       - name: Sign APK with consistent key
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
-          $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 \
-            app/build/outputs/apk/release/app-release-unsigned.apk \
-            app/build/outputs/apk/release/app-release-aligned.apk
-          jarsigner -verbose \
-            -sigalg SHA256withRSA \
-            -digestalg SHA-256 \
+          keytool -genkeypair \
+            -alias mftracker \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
             -keystore /tmp/release.jks \
             -storepass mftracker123 \
             -keypass mftracker123 \
-            -signedjar app/build/outputs/apk/release/MFTracker-signed.apk \
-            app/build/outputs/apk/release/app-release-aligned.apk \
-            mftracker
+            -dname "CN=MFTracker, OU=App, O=MFTracker, L=Chennai, S=TN, C=IN" \
+            -storetype PKCS12
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
+          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
+            --ks /tmp/release.jks \
+            --ks-pass pass:mftracker123 \
+            --key-pass pass:mftracker123 \
+            --ks-key-alias mftracker \
+            --out app/build/outputs/apk/release/MFTracker-signed.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
