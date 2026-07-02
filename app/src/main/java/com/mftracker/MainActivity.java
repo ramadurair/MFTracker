@@ -36,40 +36,35 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
 
     public class AndroidBridge {
-        // Write HTML report to a temp file and open Android share sheet.
-        // User can choose: Print, Save to Drive, Share via Gmail/WhatsApp, etc.
-        // This does NOT touch the main WebView at all.
+        // Save HTML report directly to Downloads folder
         @JavascriptInterface
-        public void shareReport(final String html, final String filename) {
+        public void saveReport(final String html, final String filename) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        // Write HTML to cache directory
-                        File cacheDir = getCacheDir();
-                        File reportFile = new File(cacheDir, filename);
-                        FileWriter fw = new FileWriter(reportFile);
+                        java.io.File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
+                            android.os.Environment.DIRECTORY_DOWNLOADS);
+                        java.io.File reportFile = new java.io.File(downloadsDir, filename);
+                        java.io.FileWriter fw = new java.io.FileWriter(reportFile);
                         fw.write(html);
                         fw.close();
 
-                        // Get URI via FileProvider (required for Android 7+)
-                        Uri fileUri = FileProvider.getUriForFile(
-                            MainActivity.this,
-                            getPackageName() + ".fileprovider",
-                            reportFile
-                        );
+                        // Notify media scanner so file appears in Files app
+                        sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE,
+                            Uri.fromFile(reportFile)));
 
-                        // Open share sheet — user picks Print, Drive, Gmail, etc.
-                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
-                        shareIntent.setType("text/html");
-                        shareIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
-                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, "MFTracker Portfolio Report");
-                        shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-                        startActivity(Intent.createChooser(shareIntent, "Share / Print Report"));
+                        new android.app.AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Report Saved")
+                            .setMessage("Saved to Downloads:\n" + filename + "\n\nOpen it in Chrome to print or save as PDF.")
+                            .setPositiveButton("OK", null)
+                            .show();
                     } catch (Exception e) {
-                        webView.evaluateJavascript(
-                            "showStatus('Export failed: " + e.getMessage() + "', 'error');", null);
+                        new android.app.AlertDialog.Builder(MainActivity.this)
+                            .setTitle("Save Failed")
+                            .setMessage(e.getClass().getSimpleName() + ": " + e.getMessage())
+                            .setPositiveButton("OK", null)
+                            .show();
                     }
                 }
             });
