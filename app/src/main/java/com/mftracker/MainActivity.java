@@ -33,24 +33,18 @@ public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST = 1001;
-    private WebView printWebView;
 
     public class AndroidBridge {
-        // Called from JS with the full report HTML.
-        // Loads it into a hidden WebView and prints that — no string size issues
-        // since we use loadDataWithBaseURL which handles large strings fine,
-        // unlike the @JavascriptInterface bridge which has a 2MB limit.
         @JavascriptInterface
         public void printReport(final String html) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    if (printWebView != null) {
-                        printWebView.destroy();
-                    }
-                    printWebView = new WebView(MainActivity.this);
-                    printWebView.getSettings().setJavaScriptEnabled(true);
-                    printWebView.setWebViewClient(new WebViewClient() {
+                    // Create a separate WebView just for printing
+                    // Use a FrameLayout container so it doesn't replace main content
+                    final WebView printView = new WebView(MainActivity.this);
+                    printView.getSettings().setJavaScriptEnabled(true);
+                    printView.setWebViewClient(new WebViewClient() {
                         @Override
                         public void onPageFinished(WebView view, String url) {
                             PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
@@ -59,14 +53,17 @@ public class MainActivity extends Activity {
                                     view.createPrintDocumentAdapter("MFTracker Portfolio");
                                 PrintAttributes attrs = new PrintAttributes.Builder()
                                     .setMediaSize(PrintAttributes.MediaSize.ISO_A4.asLandscape())
-                                    .setMinMargins(new PrintAttributes.Margins(10, 10, 10, 10))
+                                    .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
                                     .build();
                                 pm.print("MFTracker Portfolio", adapter, attrs);
                             }
+                            // Clean up the print WebView after initiating print
+                            view.destroy();
                         }
                     });
-                    printWebView.loadDataWithBaseURL(
-                        null, html, "text/html", "UTF-8", null);
+                    // Load without adding to view hierarchy to avoid replacing main UI
+                    printView.loadDataWithBaseURL(
+                        "file:///android_asset/", html, "text/html", "UTF-8", null);
                 }
             });
         }
@@ -136,7 +133,7 @@ public class MainActivity extends Activity {
 
         webView.loadUrl("file:///android_asset/index.html");
 
-        // Register back button handler for Android 13+ (API 33+)
+        // Back button: minimize app instead of exiting (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_DEFAULT,
@@ -204,7 +201,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (webView != null) webView.destroy();
-        if (printWebView != null) printWebView.destroy();
         super.onDestroy();
     }
 }
