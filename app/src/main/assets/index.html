@@ -1187,11 +1187,11 @@ function exportPDF() {
     w.document.write(html);
     w.document.close();
     setTimeout(() => { w.print(); }, 400);
-  } else if (window.AndroidBridge && window.AndroidBridge.printReport) {
-    // Android WebView: pass full report HTML to native print manager
-    window.AndroidBridge.printReport(html);
+    } else if (window.AndroidBridge && window.AndroidBridge.shareReport) {
+    // Android: write HTML to file and open share/print sheet
+    window.AndroidBridge.shareReport(html, `MFTracker_${currentTab}_${dateStr.replace(/ /g,'_')}.html`);
   } else {
-    // Fallback: blob download
+      // Fallback: blob download
     const blob = new Blob([html], {type:'text/html'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
