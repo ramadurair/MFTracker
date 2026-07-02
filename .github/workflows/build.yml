@@ -22,20 +22,19 @@ jobs:
 
       - name: Install SDK components
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "build-tools;34.0.0"
-        
+
       - name: Make gradlew executable
         run: chmod +x gradlew
 
       - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
-    - name: Sign APK with consistent key
+
+      - name: Sign APK with consistent key
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
-          # Align the APK first
           $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 \
             app/build/outputs/apk/release/app-release-unsigned.apk \
             app/build/outputs/apk/release/app-release-aligned.apk
-          # Sign with jarsigner (more compatible with newer JVM than apksigner)
           jarsigner -verbose \
             -sigalg SHA256withRSA \
             -digestalg SHA-256 \
@@ -45,7 +44,6 @@ jobs:
             -signedjar app/build/outputs/apk/release/MFTracker-signed.apk \
             app/build/outputs/apk/release/app-release-aligned.apk \
             mftracker
-      
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
