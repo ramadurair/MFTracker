@@ -28,17 +28,24 @@ jobs:
 
       - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
-
-      - name: Sign APK with consistent key
+    - name: Sign APK with consistent key
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
-          $ANDROID_HOME/build-tools/34.0.0/apksigner sign \
-            --ks /tmp/release.jks \
-            --ks-pass pass:mftracker123 \
-            --key-pass pass:mftracker123 \
-            --ks-key-alias mftracker \
-            --out app/build/outputs/apk/release/MFTracker-signed.apk \
-            app/build/outputs/apk/release/app-release-unsigned.apk
+          # Align the APK first
+          $ANDROID_HOME/build-tools/34.0.0/zipalign -v 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
+          # Sign with jarsigner (more compatible with newer JVM than apksigner)
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore /tmp/release.jks \
+            -storepass mftracker123 \
+            -keypass mftracker123 \
+            -signedjar app/build/outputs/apk/release/MFTracker-signed.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk \
+            mftracker
+      
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
